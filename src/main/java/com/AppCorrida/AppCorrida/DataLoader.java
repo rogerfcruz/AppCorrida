@@ -1,6 +1,6 @@
 package com.AppCorrida.AppCorrida;
 
-import com.AppCorrida.AppCorrida.config.SecurityConfig;
+import com.AppCorrida.AppCorrida.security.SecurityConfig;
 import com.AppCorrida.AppCorrida.entities.Destination;
 import com.AppCorrida.AppCorrida.entities.Origin;
 import com.AppCorrida.AppCorrida.entities.Ride;

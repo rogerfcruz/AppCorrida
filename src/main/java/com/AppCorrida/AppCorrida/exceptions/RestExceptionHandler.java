@@ -1,6 +1,5 @@
-package com.AppCorrida.AppCorrida.infra;
+package com.AppCorrida.AppCorrida.exceptions;
 
-import com.AppCorrida.AppCorrida.exceptions.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -47,6 +46,11 @@ public class RestExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(CalculateDistanceRideException.class)
     private ResponseEntity<String> calculateDistanceRideHandler(CalculateDistanceRideException exception){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(GenerateTokenException.class)
+    private ResponseEntity<String> generateTokenHandler(GenerateTokenException exception){
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
     }
 }
