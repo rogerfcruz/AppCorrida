@@ -20,6 +20,9 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -44,8 +47,9 @@ public class UserService {
     @Autowired
     private RideMapper rideMapper;
 
-    public List<User> findAll(){
-        return userRepository.findAll();
+    public List<User> findAll(Pageable pageable){
+        Page<User> page = userRepository.findAll(pageable);
+        return page.getContent();
     }
 
     public User findById(Long id){

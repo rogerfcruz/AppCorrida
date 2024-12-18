@@ -6,6 +6,9 @@ import com.AppCorrida.AppCorrida.entities.dto.UserDTO;
 import com.AppCorrida.AppCorrida.entities.mapper.RideMapper;
 import com.AppCorrida.AppCorrida.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,9 +28,9 @@ public class UserController {
     private RideMapper rideMapper;
 
     @GetMapping
-    public ResponseEntity<List<User>> findAll() {
-        List<User> list = userService.findAll();
-        return ResponseEntity.ok().body(list);
+    public ResponseEntity<List<User>> findAll(@RequestParam int page, @RequestParam int items) {
+        Pageable pageable = PageRequest.of(page, items);
+        return ResponseEntity.ok().body(userService.findAll(pageable));
     }
 
     @GetMapping("/{id}")
