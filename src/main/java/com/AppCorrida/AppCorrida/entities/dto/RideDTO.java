@@ -38,17 +38,13 @@ public class RideDTO {
         return origin;
     }
 
-    public void setOrigin(OriginDTO origin) {
-        this.origin = origin;
-    }
+    public void setOrigin(OriginDTO origin) { this.origin = origin; }
 
     public DestinationDTO getDestination() {
         return destination;
     }
 
-    public void setDestination(DestinationDTO destination) {
-        this.destination = destination;
-    }
+    public void setDestination(DestinationDTO destination) { this.destination = destination; }
 
     public UserDTO getDriver() {
         return driver;

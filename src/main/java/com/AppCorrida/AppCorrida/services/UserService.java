@@ -93,6 +93,7 @@ public class UserService {
     }
 
     public User createUser(User user) {
+        validateUser(user);
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new CreateUserException("Email already in use.");
         }
@@ -100,21 +101,46 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public User updateUser(Long id, User user){
+    public User updateUser(Long id, User user) {
+        validateUser(user);
+
         Optional<User> existingUser = userRepository.findById(id);
         if (existingUser.isPresent()) {
             User updatedUser = existingUser.get();
             updatedUser.setName(user.getName());
             updatedUser.setEmail(user.getEmail());
 
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
-            updatedUser.setPassword(user.getPassword());
+            if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+                updatedUser.setPassword(passwordEncoder.encode(user.getPassword()));
+            }
 
             updatedUser.setCarPlate(user.getCarPlate());
             updatedUser.setUserType(user.getUserType());
             return userRepository.save(updatedUser);
         } else {
             throw new UserNotFoundException(id);
+        }
+    }
+
+    private void validateUser(User user) {
+        if (user.getName() == null || user.getName().trim().isEmpty()) {
+            throw new CreateUserException("Name is required.");
+        }
+
+        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+            throw new CreateUserException("Email is required.");
+        }
+
+        if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+            throw new CreateUserException("Password is required.");
+        }
+
+        if (user.getUserType() == null) {
+            throw new CreateUserException("User type is required.");
+        }
+
+        if (user.getUserType() == UserType.DRIVER && (user.getCarPlate() == null || user.getCarPlate().trim().isEmpty())) {
+            throw new CreateUserException("Car plate is required for drivers.");
         }
     }
 

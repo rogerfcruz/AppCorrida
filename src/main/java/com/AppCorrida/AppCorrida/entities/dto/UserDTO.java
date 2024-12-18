@@ -52,9 +52,7 @@ public class UserDTO {
         this.carPlate = carPlate;
     }
 
-    public List<RideDTO> getPassengerRides() {
-        return passengerRides;
-    }
+    public List<RideDTO> getPassengerRides() { return passengerRides; }
 
     public void setPassengerRides(List<RideDTO> passengerRides) {
         this.passengerRides = passengerRides;
