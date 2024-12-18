@@ -33,7 +33,7 @@ public class DataLoader {
             userRepository.saveAll(Arrays.asList(user1, user2, user3));
 
             Ride ride1 = new Ride(null, user1, null, new Origin(-19.863256, -44.019666), new Destination(-19.892472, -44.025197), RideStatus.WAITING, null, null, null);
-            Ride ride2 = new Ride(null, user1, null, new Origin(-19.863256, -44.019666), new Destination(-22.879831, -42.036608), RideStatus.WAITING, null, null, null);
+            Ride ride2 = new Ride(null, user2, null, new Origin(-19.863256, -44.019666), new Destination(-22.879831, -42.036608), RideStatus.WAITING, null, null, null);
 
             rideRepository.saveAll(Arrays.asList(ride1, ride2));
         };

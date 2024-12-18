@@ -4,14 +4,16 @@ import com.AppCorrida.AppCorrida.entities.Destination;
 import com.AppCorrida.AppCorrida.entities.Origin;
 import com.AppCorrida.AppCorrida.entities.Ride;
 import com.AppCorrida.AppCorrida.entities.User;
+import com.AppCorrida.AppCorrida.entities.dto.RideDTO;
+import com.AppCorrida.AppCorrida.entities.dto.UserDTO;
 import com.AppCorrida.AppCorrida.entities.enums.RideStatus;
 import com.AppCorrida.AppCorrida.entities.enums.UserType;
-import com.AppCorrida.AppCorrida.exceptions.ResourceNotFoundException;
+import com.AppCorrida.AppCorrida.entities.mapper.RideMapper;
+import com.AppCorrida.AppCorrida.exceptions.*;
 import com.AppCorrida.AppCorrida.repositories.RideRepository;
 import com.AppCorrida.AppCorrida.repositories.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -25,6 +27,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -38,24 +41,66 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private RideMapper rideMapper;
+
     public List<User> findAll(){
         return userRepository.findAll();
     }
 
     public User findById(Long id){
         Optional<User> user = userRepository.findById(id);
-        return user.orElseThrow(() -> new ResourceNotFoundException(id));
+        return user.orElseThrow(() -> new UserNotFoundException(id));
+    }
+
+    public UserDTO getUserWithRides(Long id){
+        User user = findById(id);
+        UserDTO userDTO = new UserDTO();
+        userDTO.setId(user.getId());
+        userDTO.setName(user.getName());
+        userDTO.setEmail(user.getEmail());
+        userDTO.setCarPlate(user.getCarPlate());
+
+        List<RideDTO> passengerRides = user.getPassengerRides().stream()
+                .map(rideMapper::convertToRideDTO)
+                .collect(Collectors.toList());
+
+        userDTO.setPassengerRides(passengerRides);
+
+        List<RideDTO> driverRides = getRidesForUser(user.getUserType()).stream()
+                .map(rideMapper::convertToRideDTO)
+                .collect(Collectors.toList());
+
+        userDTO.setDriverRides(driverRides);
+
+        if (user.getUserType() == UserType.PASSENGER && passengerRides.isEmpty()){
+            throw new RideNotFoundException("There are no rides for the passenger.");
+        }
+
+        if (user.getUserType() == UserType.DRIVER && driverRides.isEmpty()){
+            throw new RideNotFoundException("There are no rides in the waiting status for the driver.");
+        }
+
+        return userDTO;
+    }
+
+    public List<Ride> getRidesForUser(UserType userType) {
+        if (userType == UserType.DRIVER) {
+            return rideRepository.findByStatus(RideStatus.WAITING);
+        } else {
+            return Collections.emptyList();
+        }
     }
 
     public User createUser(User user) {
         if (userRepository.existsByEmail(user.getEmail())) {
-            throw new RuntimeException("Email already in use.");
+            throw new CreateUserException("Email already in use.");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
-    public User update(Long id, User user){
+    public User updateUser(Long id, User user){
         Optional<User> existingUser = userRepository.findById(id);
         if (existingUser.isPresent()) {
             User updatedUser = existingUser.get();
@@ -69,31 +114,23 @@ public class UserService {
             updatedUser.setUserType(user.getUserType());
             return userRepository.save(updatedUser);
         } else {
-            throw new ResourceNotFoundException(id);
+            throw new UserNotFoundException(id);
         }
     }
 
-    public List<Ride> getRidesForUser(UserType userType) {
-        if (userType == UserType.DRIVER) {
-            return rideRepository.findByStatus(RideStatus.WAITING);
-        } else {
-            return Collections.emptyList();
-        }
-    }
-
-    public Ride create(Ride ride) {
+    public Ride createRide(Ride ride) {
         if (ride.getPassenger() == null || ride.getPassenger().getId() == null) {
-            throw new RuntimeException("Passenger ID is required to create a ride.");
+            throw new CreateRideException("Passenger ID is required to create a ride.");
         }
 
-        User passenger = userRepository.findById(ride.getPassenger().getId()).orElseThrow(() -> new RuntimeException("Passenger not found"));
+        User passenger = userRepository.findById(ride.getPassenger().getId()).orElseThrow(() -> new UserNotFoundException(ride.getPassenger().getId()));
         ride.setPassenger(passenger);
 
         boolean thereIsARaceInProgress = rideRepository.existsByPassengerIdAndStatus(ride.getPassenger().getId(), RideStatus.IN_PROGRESS) ||
                 rideRepository.existsByPassengerIdAndStatus(ride.getPassenger().getId(), RideStatus.WAITING);
 
         if (thereIsARaceInProgress) {
-            throw new RuntimeException("Passenger already has a ride in progress.");
+            throw new CreateRideException("Passenger already has a ride in progress.");
         }
         ride.setStatus(RideStatus.WAITING);
 
@@ -101,20 +138,20 @@ public class UserService {
     }
 
     public Ride acceptRide(Long rideId, Long userId) {
-        Ride ride = rideRepository.findById(rideId).orElseThrow(() -> new ResourceNotFoundException(rideId));
-        User driver = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException(userId));
+        Ride ride = rideRepository.findById(rideId).orElseThrow(() -> new RideNotFoundException(rideId));
+        User driver = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
         if (ride.getStatus() != RideStatus.WAITING) {
-            throw new RuntimeException("Only rides in waiting can be accepted.");
+            throw new AcceptRideException("Only rides in waiting can be accepted.");
         }
 
         List<Ride> onGoingRides = rideRepository.findByDriverIdAndStatus(userId, RideStatus.IN_PROGRESS);
         if (!onGoingRides.isEmpty()) {
-            throw new RuntimeException("There is a ride in progress, you cannot accept until it is finished.");
+            throw new AcceptRideException("There is a ride in progress, you cannot accept until it is finished.");
         }
 
         if (driver.getUserType() != UserType.DRIVER) {
-            throw new RuntimeException("Only drivers can be accept rides.");
+            throw new AcceptRideException("Only drivers can be accept rides.");
         }
 
         ride.setDriver(driver);
@@ -124,19 +161,19 @@ public class UserService {
     }
 
     public Ride cancelRide(Long rideId, Long userId) {
-        Ride ride = rideRepository.findById(rideId).orElseThrow(() -> new ResourceNotFoundException(rideId));
-        User passenger = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException(userId));
+        Ride ride = rideRepository.findById(rideId).orElseThrow(() -> new RideNotFoundException(rideId));
+        User passenger = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
         if (passenger.getUserType() != UserType.PASSENGER) {
-            throw new RuntimeException("Only passengers can be cancel rides.");
+            throw new CancelRideException("Only passengers can be cancel rides.");
         }
 
         if (!ride.getPassenger().getId().equals(userId)) {
-            throw new RuntimeException("This is not your ride.");
+            throw new CancelRideException("This is not your ride.");
         }
 
         if (ride.getStatus() != RideStatus.WAITING) {
-            throw new RuntimeException("Only rides in waiting can be cancelled.");
+            throw new CancelRideException("Only rides in waiting can be cancelled.");
         }
 
         ride.setStatus(RideStatus.CANCELED);
@@ -144,15 +181,15 @@ public class UserService {
     }
 
     public Ride finishRide(Long rideId, Long userId) {
-        Ride ride = rideRepository.findById(rideId).orElseThrow(() -> new ResourceNotFoundException(rideId));
-        User driver = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException(userId));
+        Ride ride = rideRepository.findById(rideId).orElseThrow(() -> new RideNotFoundException(rideId));
+        User driver = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
         if (driver.getUserType() != UserType.DRIVER) {
-            throw new RuntimeException("Only drivers can be finish rides.");
+            throw new FinishRideException("Only drivers can be finish rides.");
         }
 
         if (ride.getStatus() != RideStatus.IN_PROGRESS) {
-            throw new RuntimeException("Only rides in progress can be finished.");
+            throw new FinishRideException("Only rides in progress can be finished.");
         }
 
         ride.setStatus(RideStatus.FINISHED);
@@ -192,10 +229,8 @@ public class UserService {
                     .get(0);
 
             return segments.get("distance").asDouble();
-        } catch (ClientProtocolException e) {
-            throw new RuntimeException(e);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CalculateDistanceRideException(e.getMessage());
         }
     }
 
