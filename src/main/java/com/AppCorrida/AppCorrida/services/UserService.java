@@ -22,12 +22,15 @@ import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -103,6 +106,16 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    public String getLoggedInUserEmail() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication != null && authentication.getPrincipal() instanceof User) {
+            User userDetails = (User) authentication.getPrincipal();
+            return userDetails.getUsername();
+        }
+        return null;
+    }
+
     public User updateUser(Long id, User user) {
         validateUser(user);
 
@@ -146,10 +159,23 @@ public class UserService {
         }
     }
 
+    public boolean validateLoggedUser(Long userId){
+        User user = findById(userId);
+        return Objects.equals(user.getEmail(), getLoggedInUserEmail());
+    }
+
     public Ride createRide(Ride ride) {
         if (ride.getPassenger() == null || ride.getPassenger().getId() == null) {
             throw new CreateRideException("Passenger ID is required to create a ride.");
         }
+
+        String email = getLoggedInUserEmail();
+        User user = (User) userRepository.findByEmail(email);
+        if (user.getUserType() == UserType.DRIVER){
+            throw new CreateRideException("Only passenger can create a ride.");
+        }
+
+        if (!validateLoggedUser(ride.getPassenger().getId())) { throw new LoggedUserException(); }
 
         User passenger = userRepository.findById(ride.getPassenger().getId()).orElseThrow(() -> new UserNotFoundException(ride.getPassenger().getId()));
         ride.setPassenger(passenger);
@@ -157,9 +183,7 @@ public class UserService {
         boolean thereIsARaceInProgress = rideRepository.existsByPassengerIdAndStatus(ride.getPassenger().getId(), RideStatus.IN_PROGRESS) ||
                 rideRepository.existsByPassengerIdAndStatus(ride.getPassenger().getId(), RideStatus.WAITING);
 
-        if (thereIsARaceInProgress) {
-            throw new CreateRideException("Passenger already has a ride in progress.");
-        }
+        if (thereIsARaceInProgress) { throw new CreateRideException("Passenger already has a ride in progress."); }
         ride.setStatus(RideStatus.WAITING);
 
         return rideRepository.save(ride);
@@ -168,6 +192,8 @@ public class UserService {
     public Ride acceptRide(Long rideId, Long userId) {
         Ride ride = rideRepository.findById(rideId).orElseThrow(() -> new RideNotFoundException(rideId));
         User driver = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+
+        if (!validateLoggedUser(userId)) { throw new LoggedUserException(); }
 
         if (ride.getStatus() != RideStatus.WAITING) {
             throw new AcceptRideException("Only rides in waiting can be accepted.");
@@ -192,6 +218,8 @@ public class UserService {
         Ride ride = rideRepository.findById(rideId).orElseThrow(() -> new RideNotFoundException(rideId));
         User passenger = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
+        if (!validateLoggedUser(userId)) { throw new LoggedUserException(); }
+
         if (passenger.getUserType() != UserType.PASSENGER) {
             throw new CancelRideException("Only passengers can be cancel rides.");
         }
@@ -211,6 +239,8 @@ public class UserService {
     public Ride finishRide(Long rideId, Long userId) {
         Ride ride = rideRepository.findById(rideId).orElseThrow(() -> new RideNotFoundException(rideId));
         User driver = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+
+        if (!validateLoggedUser(userId)) { throw new LoggedUserException(); }
 
         if (driver.getUserType() != UserType.DRIVER) {
             throw new FinishRideException("Only drivers can be finish rides.");
