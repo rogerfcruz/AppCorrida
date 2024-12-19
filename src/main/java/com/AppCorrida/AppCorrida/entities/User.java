@@ -121,9 +121,7 @@ public class User implements Serializable, UserDetails {
 
     @Override
     @JsonIgnore
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
-    }
+    public Collection<? extends GrantedAuthority> getAuthorities() { return List.of(); }
 
     @Override
     @JsonIgnore

@@ -33,7 +33,6 @@ public class RideMapper {
                 rideDTO.setDriver(new UserDTO(driver.getId(), driver.getName(), driver.getEmail(), driver.getCarPlate()));
             }
         }
-
         return rideDTO;
     }
 }

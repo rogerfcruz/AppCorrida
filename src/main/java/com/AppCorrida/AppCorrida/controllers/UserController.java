@@ -3,10 +3,8 @@ package com.AppCorrida.AppCorrida.controllers;
 import com.AppCorrida.AppCorrida.entities.Ride;
 import com.AppCorrida.AppCorrida.entities.User;
 import com.AppCorrida.AppCorrida.entities.dto.UserDTO;
-import com.AppCorrida.AppCorrida.entities.mapper.RideMapper;
 import com.AppCorrida.AppCorrida.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,14 +16,11 @@ import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/user")
 public class UserController {
 
     @Autowired
     private UserService userService;
-
-    @Autowired
-    private RideMapper rideMapper;
 
     @GetMapping
     public ResponseEntity<List<User>> findAll(@RequestParam int page, @RequestParam int items) {
@@ -45,12 +40,12 @@ public class UserController {
         return ResponseEntity.ok(userDTO);
     }
 
-    @PostMapping("/user/create")
+    @PostMapping("/create")
     public ResponseEntity<User> createUser(@RequestBody User user) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(user));
     }
 
-    @PutMapping("/user/update/{id}")
+    @PutMapping("/update/{id}")
     public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User user){
         user = userService.updateUser(id, user);
         return ResponseEntity.ok().body(user);
@@ -63,20 +58,20 @@ public class UserController {
         return ResponseEntity.created(uri).body(createdRide);
     }
 
-    @PutMapping("/{rideId}/accept")
-    public ResponseEntity<Ride> acceptRide(@PathVariable Long rideId, @RequestParam Long userId) {
+    @PutMapping("/{userId}/ride/{rideId}/accept")
+    public ResponseEntity<Ride> acceptRide(@PathVariable Long userId, @PathVariable Long rideId) {
         Ride acceptedRide = userService.acceptRide(rideId, userId);
         return ResponseEntity.ok(acceptedRide);
     }
 
-    @PutMapping("/{rideId}/cancel")
-    public ResponseEntity<Ride> cancelRide(@PathVariable Long rideId, @RequestParam Long userId) {
+    @PutMapping("/{userId}/ride/{rideId}/cancel")
+    public ResponseEntity<Ride> cancelRide(@PathVariable Long userId, @PathVariable Long rideId) {
         Ride cancelRide = userService.cancelRide(rideId, userId);
         return ResponseEntity.ok(cancelRide);
     }
 
-    @PutMapping("/{rideId}/finish")
-    public ResponseEntity<Ride> finishRide(@PathVariable Long rideId, @RequestParam Long userId) {
+    @PutMapping("/{userId}/ride/{rideId}/finish")
+    public ResponseEntity<Ride> finishRide(@PathVariable Long userId, @PathVariable Long rideId) {
         Ride finishRide = userService.finishRide(rideId, userId);
         return ResponseEntity.ok(finishRide);
     }

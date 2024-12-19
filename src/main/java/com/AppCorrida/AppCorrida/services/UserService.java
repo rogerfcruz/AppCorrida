@@ -21,7 +21,6 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -84,7 +83,6 @@ public class UserService {
         if (user.getUserType() == UserType.DRIVER && driverRides.isEmpty()){
             throw new RideNotFoundException("There are no rides in the waiting status for the driver.");
         }
-
         return userDTO;
     }
 
